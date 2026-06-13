@@ -1,6 +1,11 @@
 "use client";
 import { createContext, useContext, useState, useCallback, ReactNode } from "react";
-import { StellarWalletsKit, WalletNetwork, WalletType, ISupportedWallet } from "@creit.tech/stellar-wallets-kit";
+import {
+  StellarWalletsKit,
+  WalletNetwork,
+  FREIGHTER_ID,
+  FreighterModule,
+} from "@creit.tech/stellar-wallets-kit";
 
 interface WalletContextType {
   address: string | null;
@@ -28,11 +33,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     try {
       const walletKit = new StellarWalletsKit({
         network: WalletNetwork.TESTNET,
-        selectedWalletId: WalletType.FREIGHTER,
-        wallets: [WalletType.FREIGHTER],
+        selectedWalletId: FREIGHTER_ID,
+        modules: [new FreighterModule()],
       });
       await walletKit.openModal({
-        onWalletSelected: async (option: ISupportedWallet) => {
+        onWalletSelected: async (option) => {
           walletKit.setWallet(option.id);
           const { address: addr } = await walletKit.getAddress();
           setAddress(addr);
