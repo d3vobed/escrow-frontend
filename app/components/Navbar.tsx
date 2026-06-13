@@ -15,6 +15,9 @@ export default function Navbar() {
       <div className="flex items-center gap-4">
         {address ? (
           <>
+            <Link href="/dashboard" className="text-sm text-gray-300 hover:text-white transition">
+              Dashboard
+            </Link>
             <Link href="/create" className="text-sm text-gray-300 hover:text-white transition">
               + New Job
             </Link>
