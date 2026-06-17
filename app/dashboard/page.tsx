@@ -5,35 +5,59 @@ import Navbar from "@/app/components/Navbar";
 import MilestoneCard from "@/app/components/MilestoneCard";
 import LoadingSkeleton from "@/app/components/LoadingSkeleton";
 
-// Mock data for demonstration
-const mockJob = {
-  id: "C...",
-  client: "G...Client",
-  freelancer: "G...Freelancer",
-  arbiter: "G...Arbiter",
-  funded: true,
-  milestones: [
-    { index: 0, amount: "30000000", status: "Released" },
-    { index: 1, amount: "70000000", status: "Delivered" },
-  ],
-};
+interface Milestone {
+  index: number;
+  amount: string;
+  status: string;
+}
+
+interface Job {
+  id: string;
+  client: string;
+  freelancer: string;
+  arbiter: string;
+  funded: boolean;
+  milestones: Milestone[];
+}
 
 export default function Dashboard() {
   const { address } = useWallet();
   const [loading, setLoading] = useState(true);
-  const [job, setJob] = useState<typeof mockJob | null>(mockJob);
+  const [job, setJob] = useState<Job | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Simulate API loading delay
-    const timer = setTimeout(() => {
-      setJob(mockJob);
-      setLoading(false);
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, []);
+    const fetchJob = async () => {
+      if (!address) {
+        setLoading(false);
+        return;
+      }
 
-  const isClient = !!address?.startsWith("G...Client");
-  const isFreelancer = !!address?.startsWith("G...Freelancer");
+      setLoading(true);
+      setError(null);
+
+      try {
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+        const res = await fetch(`${backendUrl}/api/jobs/by-wallet/${address}`);
+        const data = await res.json();
+
+        if (data.success) {
+          setJob(data.data);
+        } else {
+          setError(data.error || "Failed to fetch job data");
+        }
+      } catch (err: any) {
+        setError(err.message || "Failed to connect to backend");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchJob();
+  }, [address]);
+
+  const isClient = job && address === job.client;
+  const isFreelancer = job && address === job.freelancer;
 
   const handleMarkDelivered = async (i: number) => {
     setLoading(true);
@@ -71,6 +95,12 @@ export default function Dashboard() {
           <p className="text-center text-gray-500">Connect your wallet to view your jobs</p>
         ) : loading ? (
           <LoadingSkeleton />
+        ) : error ? (
+          <div className="text-center text-red-400">
+            Error: {error}
+          </div>
+        ) : !job ? (
+          <p className="text-center text-gray-500">No jobs found</p>
         ) : (
           <div className="space-y-8">
             <div className="border border-gray-800 rounded-xl bg-gray-900 p-6">
