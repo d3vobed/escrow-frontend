@@ -13,6 +13,7 @@ export default function CreateJob() {
   const [freelancer, setFreelancer] = useState("");
   const [arbiter, setArbiter] = useState("");
   const [token, setToken] = useState("");
+  const [autoReleaseDays, setAutoReleaseDays] = useState("7");
   const [milestones, setMilestones] = useState([{ amount: "" }]);
   const [loading, setLoading] = useState(false);
 
@@ -31,8 +32,9 @@ export default function CreateJob() {
     setLoading(true);
     try {
       const milestoneAmounts = milestones.map(m => BigInt(m.amount));
-      
+
       // Build transaction
+      const autoReleaseSeconds = BigInt(autoReleaseDays) * BigInt(24) * BigInt(60) * BigInt(60); // Convert days to seconds
       const buildTxRes = await fetch(`${BACKEND_URL}/api/jobs/build-tx`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -40,11 +42,13 @@ export default function CreateJob() {
           contractId: CONTRACT_ID,
           method: "initialize",
           args: [
-            { type: "address", value: address },
-            { type: "address", value: freelancer },
-            { type: "address", value: arbiter },
-            { type: "address", value: token },
-            { type: "vec", value: milestoneAmounts.map(a => ({ type: "i128", value: a.toString() })) }
+            { type: "address", value: address }, // Admin (same as client for now)
+            { type: "address", value: address }, // Client
+            { type: "address", value: freelancer }, // Freelancer
+            { type: "address", value: arbiter }, // Arbiter
+            { type: "address", value: token }, // Token
+            { type: "u64", value: autoReleaseSeconds.toString() }, // Auto-release seconds
+            { type: "vec", value: milestoneAmounts.map(a => ({ type: "i128", value: a.toString() })) } // Milestone amounts
           ],
           sourceAddress: address
         })
@@ -107,6 +111,17 @@ export default function CreateJob() {
               value={token}
               onChange={(e) => setToken(e.target.value)}
               placeholder="C..."
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm text-gray-400 mb-1">Response Deadline (days)</label>
+            <input
+              type="number"
+              min="1"
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-indigo-500"
+              value={autoReleaseDays}
+              onChange={(e) => setAutoReleaseDays(e.target.value)}
               required
             />
           </div>
