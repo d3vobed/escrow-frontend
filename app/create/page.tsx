@@ -21,6 +21,7 @@ export default function CreateJob() {
   const [autoReleaseDays, setAutoReleaseDays] = useState("7");
   const [milestones, setMilestones] = useState([{ amount: "" }]);
   const [loading, setLoading] = useState(false);
+  const [phase, setPhase] = useState<TxPhase>("idle");
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
 
@@ -36,35 +37,11 @@ export default function CreateJob() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!address) return;
+
     setLoading(true);
     setError(null);
-    try {
-      const milestoneAmounts = milestones.map(m => BigInt(m.amount));
-
-      // Build transaction
-      const autoReleaseSeconds = BigInt(autoReleaseDays) * BigInt(24) * BigInt(60) * BigInt(60); // Convert days to seconds
-      const buildTxRes = await fetch(`${BACKEND_URL}/api/jobs/build-tx`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contractId: CONTRACT_ID,
-          method: "initialize",
-          args: [
-            { type: "address", value: address }, // Admin (same as client for now)
-            { type: "address", value: address }, // Client
-            { type: "address", value: freelancer }, // Freelancer
-            { type: "address", value: arbiter }, // Arbiter
-            { type: "address", value: token }, // Token
-            { type: "u64", value: autoReleaseSeconds.toString() }, // Auto-release seconds
-            { type: "vec", value: milestoneAmounts.map(a => ({ type: "i128", value: a.toString() })) } // Milestone amounts
-          ],
-          sourceAddress: address
-        })
-      });
-
-    setPhase("building");
-    setError(null);
     setTxHash(null);
+    setPhase("building");
 
     try {
       const milestoneAmounts = milestones.map((m) => BigInt(m.amount));
@@ -93,11 +70,11 @@ export default function CreateJob() {
         onPhase: setPhase,
       });
 
-      if (!submitRes.ok) throw new Error("Failed to submit transaction");
-      const { hash } = await submitRes.json();
+      setPhase("success");
       setTxHash(hash);
-    } catch (err: any) {
-      setError(err instanceof Error ? err.message : "An unexpected error occurred");
+    } catch (err) {
+      setPhase("error");
+      setError(formatTxError(err));
     } finally {
       setLoading(false);
     }
