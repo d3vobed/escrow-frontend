@@ -46,14 +46,23 @@ export default function Dashboard() {
     setFetchLoading(true);
     setError(null);
 
-    try {
-      const res = await fetch(`${BACKEND_URL}/api/jobs/by-wallet/${address}`);
-      const data = await res.json();
+      setLoading(true);
+      setError(null);
 
-      if (data.success) {
-        setJob(data.data);
-      } else {
-        setError(data.error || "Failed to fetch job data");
+      try {
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:3001";
+        const res = await fetch(`${backendUrl}/api/jobs/by-wallet/${address}`);
+        const data = await res.json();
+
+        if (data.success) {
+          setJob(data.data);
+        } else {
+          setError(data.error || "Failed to fetch job data");
+        }
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to connect to backend");
+      } finally {
+        setLoading(false);
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to connect to backend");
@@ -68,6 +77,7 @@ export default function Dashboard() {
 
   const isClient = !!(job && address === job.client);
   const isFreelancer = !!(job && address === job.freelancer);
+  const milestoneList = Array.isArray(job?.milestones) ? job.milestones : [];
 
   const executeTx = useCallback(
     async (actionKey: string, method: string, args: { type: string; value: unknown }[]) => {
@@ -165,23 +175,21 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="space-y-4">
-                {job.milestones.map((m) => (
-                  <MilestoneCard
-                    key={m.index}
-                    milestone={m}
-                    isClient={isClient}
-                    isFreelancer={isFreelancer}
-                    partialReleaseState={getState(`partial-${m.index}`)}
-                    claimAutoReleaseState={getState(`claim-${m.index}`)}
-                    isPartialReleasePending={isPending(`partial-${m.index}`)}
-                    isClaimAutoReleasePending={isPending(`claim-${m.index}`)}
-                    onPartialRelease={handlePartialRelease}
-                    onClaimAutoRelease={handleClaimAutoRelease}
-                    onMarkDelivered={handleMarkDelivered}
-                    onApprove={handleApprove}
-                    onDispute={handleDispute}
-                  />
-                ))}
+                {milestoneList.length > 0 ? (
+                  milestoneList.map((m) => (
+                    <MilestoneCard
+                      key={m.index}
+                      milestone={m}
+                      isClient={isClient}
+                      isFreelancer={isFreelancer}
+                      onMarkDelivered={handleMarkDelivered}
+                      onApprove={handleApprove}
+                      onDispute={handleDispute}
+                    />
+                  ))
+                ) : (
+                  <MilestoneCard milestone={null} isClient={isClient} isFreelancer={isFreelancer} />
+                )}
               </div>
             </div>
           </div>
